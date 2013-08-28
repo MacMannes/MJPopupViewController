@@ -20,7 +20,6 @@
 
 @interface UIViewController (MJPopupViewControllerPrivate)
 - (UIView*)topView;
-- (void)presentPopupView:(UIView*)popupView;
 @end
 
 static NSString *MJPopupViewDismissedKey = @"MJPopupViewDismissed";
@@ -51,15 +50,25 @@ static void * const keypath = (void*)&keypath;
     
 }
 
-- (void)presentPopupViewController:(UIViewController*)popupViewController animationType:(MJPopupViewAnimation)animationType dismissed:(void(^)(void))dismissed
+- (void)presentPopupViewController:(UIViewController*)popupViewController animationType:(MJPopupViewAnimation)animationType dismissed:(void(^)(void))dismissed modal:(BOOL)modal
 {
     self.mj_popupViewController = popupViewController;
-    [self presentPopupView:popupViewController.view animationType:animationType dismissed:dismissed];
+    [self presentPopupView:popupViewController.view animationType:animationType dismissed:dismissed modal:modal];
+}
+
+- (void)presentPopupViewController:(UIViewController*)popupViewController animationType:(MJPopupViewAnimation)animationType dismissed:(void(^)(void))dismissed
+{
+    [self presentPopupViewController:popupViewController animationType:animationType dismissed:dismissed modal:NO];
+}
+
+- (void)presentPopupViewController:(UIViewController*)popupViewController animationType:(MJPopupViewAnimation)animationType modal:(BOOL)modal
+{
+    [self presentPopupViewController:popupViewController animationType:animationType dismissed:nil modal:modal];
 }
 
 - (void)presentPopupViewController:(UIViewController*)popupViewController animationType:(MJPopupViewAnimation)animationType
 {
-    [self presentPopupViewController:popupViewController animationType:animationType dismissed:nil];
+    [self presentPopupViewController:popupViewController animationType:animationType dismissed:nil modal:NO];
 }
 
 - (void)dismissPopupViewControllerWithanimationType:(MJPopupViewAnimation)animationType
@@ -93,12 +102,7 @@ static void * const keypath = (void*)&keypath;
 #pragma mark -
 #pragma mark View Handling
 
-- (void)presentPopupView:(UIView*)popupView animationType:(MJPopupViewAnimation)animationType
-{
-    [self presentPopupView:popupView animationType:animationType dismissed:nil];
-}
-
-- (void)presentPopupView:(UIView*)popupView animationType:(MJPopupViewAnimation)animationType dismissed:(void(^)(void))dismissed
+- (void)presentPopupView:(UIView*)popupView animationType:(MJPopupViewAnimation)animationType dismissed:(void(^)(void))dismissed modal:(BOOL)modal
 {
     UIView *sourceView = [self topView];
     sourceView.tag = kMJSourceViewTag;
@@ -130,18 +134,21 @@ static void * const keypath = (void*)&keypath;
     self.mj_popupBackgroundView.alpha = 0.0f;
     [overlayView addSubview:self.mj_popupBackgroundView];
     
-    // Make the Background Clickable
-    UIButton * dismissButton = [UIButton buttonWithType:UIButtonTypeCustom];
-    dismissButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-    dismissButton.backgroundColor = [UIColor clearColor];
-    dismissButton.frame = sourceView.bounds;
-    [overlayView addSubview:dismissButton];
+    UIButton *dismissButton = nil;
+    if (!modal) {
+        // Make the Background Clickable
+        UIButton * dismissButton = [UIButton buttonWithType:UIButtonTypeCustom];
+        dismissButton.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        dismissButton.backgroundColor = [UIColor clearColor];
+        dismissButton.frame = sourceView.bounds;
+        [overlayView addSubview:dismissButton];
+        [dismissButton addTarget:self action:@selector(dismissPopupViewControllerWithanimation:) forControlEvents:UIControlEventTouchUpInside];
+    }
     
     popupView.alpha = 0.0f;
     [overlayView addSubview:popupView];
     [sourceView addSubview:overlayView];
     
-    [dismissButton addTarget:self action:@selector(dismissPopupViewControllerWithanimation:) forControlEvents:UIControlEventTouchUpInside];
     switch (animationType) {
         case MJPopupViewAnimationSlideBottomTop:
         case MJPopupViewAnimationSlideBottomBottom:
